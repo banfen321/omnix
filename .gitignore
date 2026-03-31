@@ -1,0 +1,10 @@
+nixenv
+nixenv-agent
+dist/
+*.db
+*.sqlite
+.direnv/
+result
+
+.nix/
+.envrc

@@ -1,0 +1,199 @@
+package generator
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
+
+	"github.com/banfen321/OmniNix/internal/resolver"
+	"github.com/banfen321/OmniNix/internal/scanner"
+)
+
+type Generator struct {
+	info    *scanner.ProjectInfo
+	nixPkgs []resolver.NixPackage
+}
+
+func New(info *scanner.ProjectInfo, nixPkgs []resolver.NixPackage) *Generator {
+	return &Generator{
+		info:    info,
+		nixPkgs: nixPkgs,
+	}
+}
+
+func (g *Generator) Generate(nixDir string) error {
+	if err := os.MkdirAll(nixDir, 0o755); err != nil {
+		return fmt.Errorf("create .nix dir: %w", err)
+	}
+
+	flakeContent, err := g.renderFlake()
+	if err != nil {
+		return fmt.Errorf("render flake: %w", err)
+	}
+
+	flakePath := filepath.Join(nixDir, "flake.nix")
+	if err := os.WriteFile(flakePath, []byte(flakeContent), 0o644); err != nil {
+		return fmt.Errorf("write flake.nix: %w", err)
+	}
+
+	return nil
+}
+
+func (g *Generator) GenerateEnvrc(projectDir string) error {
+	envrcPath := filepath.Join(projectDir, ".envrc")
+	content := "use flake ./.nix\n"
+	return os.WriteFile(envrcPath, []byte(content), 0o644)
+}
+
+func (g *Generator) renderFlake() (string, error) {
+	uniqueAttrs := make(map[string]bool)
+	var packages []string
+
+	for _, pkg := range g.nixPkgs {
+		if pkg.Source == "fallback" || strings.Contains(pkg.NixAttr, "/") || strings.Contains(pkg.NixAttr, " ") {
+			// Skip unresolvable or invalid package names to avoid breaking the flake evaluation
+			continue
+		}
+
+		if !uniqueAttrs[pkg.NixAttr] {
+			uniqueAttrs[pkg.NixAttr] = true
+			packages = append(packages, pkg.NixAttr)
+		}
+	}
+
+	data := flakeData{
+		Description: fmt.Sprintf("Dev environment for %s", filepath.Base(g.info.Path)),
+		Stacks:      g.info.Stacks,
+		Packages:    packages,
+		ShellHook:   g.buildShellHook(),
+	}
+
+	tmpl, err := template.New("flake").Parse(flakeTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+func (g *Generator) buildShellHook() string {
+	var hooks []string
+
+	for _, stack := range g.info.Stacks {
+		switch stack {
+		case "python":
+			hooks = append(hooks,
+				`export PYTHONDONTWRITEBYTECODE=1`,
+				`if [ ! -d ".venv" ]; then python3 -m venv .venv; fi`,
+				`source .venv/bin/activate`,
+				`if [ -f "requirements.txt" ]; then pip install -r requirements.txt --quiet 2>/dev/null; fi`,
+				`if [ -f "pyproject.toml" ]; then pip install -e ".[dev]" --quiet 2>/dev/null || pip install -e . --quiet 2>/dev/null; fi`,
+				`if [ -f "setup.py" ] && [ ! -f "pyproject.toml" ]; then pip install -e . --quiet 2>/dev/null; fi`,
+			)
+		case "node":
+			hooks = append(hooks,
+				`export NODE_ENV=development`,
+				`if [ -f "package-lock.json" ]; then npm ci --silent 2>/dev/null; fi`,
+				`if [ -f "yarn.lock" ]; then yarn install --frozen-lockfile --silent 2>/dev/null; fi`,
+				`if [ -f "pnpm-lock.yaml" ]; then pnpm install --frozen-lockfile --silent 2>/dev/null; fi`,
+			)
+		case "go":
+			hooks = append(hooks,
+				`export GOPATH=$HOME/go`,
+				`export PATH=$GOPATH/bin:$PATH`,
+			)
+		case "rust":
+			hooks = append(hooks,
+				`export RUST_BACKTRACE=1`,
+			)
+		}
+	}
+
+	return strings.Join(hooks, "\n            ")
+}
+
+type flakeData struct {
+	Description string
+	Stacks      []string
+	Packages    []string
+	ShellHook   string
+}
+
+var flakeTemplate = `{
+  description = "{{.Description}}";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
+
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = nixpkgs.legacyPackages.` + "${system}" + `;
+      in
+      {
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+{{- range .Packages}}
+            {{.}}
+{{- end}}
+          ];
+{{- if .ShellHook}}
+
+          shellHook = ''
+            {{.ShellHook}}
+          '';
+{{- end}}
+        };
+      });
+}
+`
+
+func PatchGitignore(projectDir string) error {
+	gitignorePath := filepath.Join(projectDir, ".gitignore")
+
+	nixEntries := []string{
+		".nix/",
+		".envrc",
+		".direnv/",
+	}
+
+	var existing string
+	if data, err := os.ReadFile(gitignorePath); err == nil {
+		existing = string(data)
+	}
+
+	var toAdd []string
+	for _, entry := range nixEntries {
+		if !strings.Contains(existing, entry) {
+			toAdd = append(toAdd, entry)
+		}
+	}
+
+	if len(toAdd) == 0 {
+		return nil
+	}
+
+	f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	content := "\n"
+	for _, entry := range toAdd {
+		content += entry + "\n"
+	}
+
+	_, err = f.WriteString(content)
+	return err
+}
