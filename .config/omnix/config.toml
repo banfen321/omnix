@@ -1,0 +1,6 @@
+api_provider = "none"
+api_key = "none"
+fast_model = "none"
+smart_model = "none"
+auto_gitignore = true
+sqlite_path = "/home/nikolos/home-lab/git-project/tmp-problems/nixenv-agent/omnix.db"

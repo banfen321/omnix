@@ -39,7 +39,6 @@ omnix conf
 `omnix` runs entirely locally. It needs to know what packages exist in Nix. This command downloads the latest index from `nixpkgs` directly into a local SQLite database on your computer (`~/.config/omnix/omnix.sqlite`).
 ```bash
 omnix sync
-# Takes about 3-5 seconds to index 100k+ packages!
 ```
 
 ### 4. Build Your Environment!

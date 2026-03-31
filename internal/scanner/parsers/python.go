@@ -108,6 +108,12 @@ var pythonStdlib = map[string]bool{
 	"threading": true, "multiprocessing": true, "io": true, "sqlite3": true, "csv": true,
 	"urllib": true, "hashlib": true, "random": true, "asyncio": true, "socket": true,
 	"struct": true, "base64": true, "argparse": true, "uuid": true, "warnings": true,
+	"ctypes": true, "inspect": true, "abc": true, "contextlib": true, "glob": true,
+	"tempfile": true, "unittest": true, "bisect": true, "heapq": true, "array": true,
+	"pickle": true, "zlib": true, "gzip": true, "bz2": true, "lzma": true,
+	"tarfile": true, "zipfile": true, "getpass": true, "platform": true, "resource": true,
+	"signal": true, "termios": true, "stat": true, "traceback": true, "pprint": true,
+	"copy": true, "weakref": true, "types": true, "gc": true,
 }
 
 func (p *PythonParser) Parse(dir string) ([]Dep, error) {

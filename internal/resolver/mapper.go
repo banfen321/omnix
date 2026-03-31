@@ -142,3 +142,7 @@ func (r *Resolver) resolveOne(dep scanner.Dependency) (*NixPackage, error) {
 
 	return nil, fmt.Errorf("could not resolve %s:%s", dep.Ecosystem, dep.Name)
 }
+
+func (r *Resolver) FixFlake(flakeContent, errorMsg string) (string, error) {
+	return r.llm.FixFlake(flakeContent, errorMsg)
+}

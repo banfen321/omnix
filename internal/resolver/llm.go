@@ -55,7 +55,14 @@ func (l *LLMClient) GenerateFlake(context string) (string, error) {
 }
 
 func (l *LLMClient) FixFlake(flakeContent, errorMsg string) (string, error) {
-	prompt := fmt.Sprintf(`Fix this flake.nix that has an error. Return ONLY the corrected flake.nix content, no comments, no explanation.
+	prompt := fmt.Sprintf(`Fix this flake.nix that has an error. 
+
+Common causes of errors:
+- Missing 'python3Packages.X' often means X is a Python standard library module (like ctypes, abc, etc.) and should be REMOVED from buildInputs.
+- Typos in package names.
+- Packages not available in the current nixpkgs version.
+
+Return ONLY the corrected flake.nix content, no comments, no explanation.
 
 Error:
 %s

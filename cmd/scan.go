@@ -8,11 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
-
 	"github.com/banfen321/omnix/internal/config"
 	"github.com/banfen321/omnix/internal/generator"
 	"github.com/banfen321/omnix/internal/resolver"
@@ -181,9 +179,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	s.Suffix = " Validating flake..."
-	missingAttrRegex := regexp.MustCompile(`error: attribute '([^']+)' missing`)
 
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 3; i++ { // Try up to 3 times to fix the flake
 		output, err := validator.Check(nixDir)
 		if err == nil {
 			s.Stop()
@@ -191,36 +188,29 @@ func runScan(cmd *cobra.Command, args []string) error {
 			break
 		}
 
-		// Try to fix "attribute missing" errors
-		matches := missingAttrRegex.FindStringSubmatch(output)
-		if len(matches) > 1 {
-			badAttr := matches[1]
-			// Find and remove the package from our list
-			var kept []resolver.NixPackage
-			found := false
-			for _, p := range nixPkgs {
-				// Match if it's the exact attr, or if the bad attr is the specific leaf (e.g. 'llava' in 'python3Packages.llava')
-				if p.NixAttr == badAttr || strings.HasSuffix(p.NixAttr, "."+badAttr) {
-					found = true
-					continue
-				}
-				kept = append(kept, p)
-			}
-
-			if found {
-				nixPkgs = kept
-				// Re-generate with updated package list
-				_ = generator.New(info, nixPkgs).Generate(nixDir)
-				yellow.Printf("  ⚠ Attribute '%s' missing in nixpkgs. Skipping and relying on language PM.\n", badAttr)
-				continue
-			}
+		// Try to fix the flake using LLM
+		s.Suffix = " Fixing flake errors automatically..."
+		flakePath := filepath.Join(nixDir, "flake.nix")
+		flakeContent, errRead := os.ReadFile(flakePath)
+		if errRead != nil {
+			s.Stop()
+			return fmt.Errorf("read flake: %w", errRead)
 		}
 
-		// If we reach here, it's either an unfixable error or no more matches
-		s.Stop()
-		yellow.Printf("  ⚠ Validation warning: %s\n", output)
-		dim.Println("    flake.nix was generated but may need manual adjustments")
-		break
+		fixed, fixErr := res.FixFlake(string(flakeContent), output)
+		if fixErr != nil {
+			s.Stop()
+			yellow.Printf("  ⚠ Failed to auto-fix: %s\n", fixErr)
+			dim.Println("    (Error: " + output + ")")
+			break
+		}
+
+		// Write fixed flake and try again
+		if errWrite := os.WriteFile(flakePath, []byte(fixed), 0o644); errWrite != nil {
+			s.Stop()
+			return fmt.Errorf("write fixed flake: %w", errWrite)
+		}
+		yellow.Println("  ⚠ Automatically fixed one or more environment errors. Retrying...")
 	}
 
 	if err := db.PutCache(projectHash, nixDir); err != nil {
