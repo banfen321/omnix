@@ -463,7 +463,25 @@ func hookDirenvToRC() {
 	// Silence noisy export logs
 	if !strings.Contains(contentStr, "DIRENV_LOG_FORMAT") {
 		f.WriteString("export DIRENV_LOG_FORMAT=\"\"\n")
-		added = append(added, "silent direnv logs")
+		added = append(added, "silent logs (shell)")
+	}
+
+	// Completely silence the "direnv export +AR..." env diffs and warnings
+	direnvConfigDir := filepath.Join(home, ".config/direnv")
+	_ = os.MkdirAll(direnvConfigDir, 0o755)
+	tomlPath := filepath.Join(direnvConfigDir, "direnv.toml")
+	tomlData, _ := os.ReadFile(tomlPath)
+	if !strings.Contains(string(tomlData), "hide_env_diff") {
+		tf, err := os.OpenFile(tomlPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err == nil {
+			if !strings.Contains(string(tomlData), "[global]") {
+				tf.WriteString("\n[global]\n")
+			}
+			tf.WriteString("hide_env_diff = true\n")
+			tf.WriteString("warn_timeout = 0\n")
+			tf.Close()
+			added = append(added, "silent logs (toml)")
+		}
 	}
 
 	// Source nix-direnv for caching (must go into ~/.direnvrc, NOT zshrc)
