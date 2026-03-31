@@ -146,3 +146,7 @@ func (r *Resolver) resolveOne(dep scanner.Dependency) (*NixPackage, error) {
 func (r *Resolver) FixFlake(flakeContent, errorMsg string) (string, error) {
 	return r.llm.FixFlake(flakeContent, errorMsg)
 }
+
+func (r *Resolver) RepairPackage(badAttr, ecosystem, errorMsg string) (string, error) {
+	return r.llm.RepairPackage(badAttr, ecosystem, errorMsg)
+}

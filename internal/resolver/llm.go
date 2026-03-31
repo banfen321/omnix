@@ -81,6 +81,20 @@ Current flake.nix:
 	return cleanLLMResponse(resp), nil
 }
 
+// RepairPackage asks the fast model to find the correct nix attribute for a broken package.
+// Returns the correct attribute, or "SKIP" if the package should not be in the flake.
+func (l *LLMClient) RepairPackage(badAttr, ecosystem, errorMsg string) (string, error) {
+	prompt := fmt.Sprintf(`Package "%s" (%s) failed in nixpkgs: %s
+
+Reply with ONLY one of:
+1. The correct nixpkgs attribute (e.g. python313Packages.flask)
+2. SKIP — if it's a stdlib module, or not available in nixpkgs and should be installed via pip/npm/cargo instead
+
+One line. No explanation.`, badAttr, ecosystem, errorMsg)
+
+	return l.ask(l.cfg.FastModel, prompt)
+}
+
 func cleanLLMResponse(resp string) string {
 	resp = strings.TrimSpace(resp)
 	if strings.HasPrefix(resp, "```") {

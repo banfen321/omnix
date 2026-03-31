@@ -189,24 +189,51 @@ func runScan(cmd *cobra.Command, args []string) error {
 			break
 		}
 
-		// FAST PATH: deterministic regex-based fix for missing attributes
+		// FAST PATH: smart re-resolve for missing attributes
 		if len(result.MissingAttrs) > 0 {
+			s.Suffix = " Re-resolving broken packages..."
 			for _, badAttr := range result.MissingAttrs {
-				var kept []resolver.NixPackage
+				// Find the ecosystem of this broken package
+				ecosystem := "unknown"
 				for _, p := range nixPkgs {
 					if p.NixAttr == badAttr || strings.HasSuffix(p.NixAttr, "."+badAttr) {
-						continue
+						ecosystem = p.Ecosystem
+						break
 					}
-					kept = append(kept, p)
 				}
-				nixPkgs = kept
-				yellow.Printf("  ⚠ Pruned '%s' (missing in nixpkgs).\n", badAttr)
+
+				// Ask fast model: correct attr or SKIP?
+				repair, repairErr := res.RepairPackage(badAttr, ecosystem, result.Output)
+				repair = strings.TrimSpace(repair)
+
+				if repairErr != nil || strings.EqualFold(repair, "SKIP") || repair == "" {
+					// SKIP: remove from package list (pip/npm/cargo will handle it)
+					var kept []resolver.NixPackage
+					for _, p := range nixPkgs {
+						if p.NixAttr == badAttr || strings.HasSuffix(p.NixAttr, "."+badAttr) {
+							continue
+						}
+						kept = append(kept, p)
+					}
+					nixPkgs = kept
+					yellow.Printf("  ⚠ Skipped '%s' (will be installed via language package manager)\n", badAttr)
+				} else {
+					// REPAIR: swap in the corrected attribute
+					for j, p := range nixPkgs {
+						if p.NixAttr == badAttr || strings.HasSuffix(p.NixAttr, "."+badAttr) {
+							nixPkgs[j].NixAttr = repair
+							green.Printf("  ✓ Repaired '%s' → '%s'\n", badAttr, repair)
+							break
+						}
+					}
+				}
 			}
-			// Regenerate flake from template with the cleaned package list
+			// Regenerate flake from template with the updated package list
 			if err := generator.New(info, nixPkgs).Generate(nixDir); err != nil {
 				s.Stop()
 				return fmt.Errorf("regenerate error: %w", err)
 			}
+			s.Suffix = " Validating flake..."
 			continue
 		}
 
