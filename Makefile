@@ -1,6 +1,6 @@
 .PHONY: build install test lint update deps
 
-VERSION ?= 0.1.1
+VERSION ?= 0.5.4
 BIN_NAME = omnix
 
 build:

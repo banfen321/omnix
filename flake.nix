@@ -14,7 +14,7 @@
       {
         packages.default = pkgs.buildGoModule {
           pname = "omnix";
-          version = "0.1.0";
+          version = "0.5.4";
           src = ./.;
           
           # Use vendor directory to avoid needing to calculate vendorHash
