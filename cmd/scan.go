@@ -179,6 +179,9 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	s.Suffix = " Locking flake inputs..."
+	validator.LockFlake(nixDir)
+
 	s.Suffix = " Validating flake..."
 	failedRepairs := make(map[string]bool) // track attrs that were already repaired once
 
@@ -188,6 +191,33 @@ func runScan(cmd *cobra.Command, args []string) error {
 			s.Stop()
 			green.Println("  ✓ Validation passed")
 			break
+		}
+
+		// INSTANT PATH: handle renamed attributes (e.g. github3_py → github3-py)
+		if len(result.RenamedAttrs) > 0 {
+			for _, ra := range result.RenamedAttrs {
+				for j, p := range nixPkgs {
+					// Match the leaf name (e.g. 'github3_py' in 'python3Packages.github3_py')
+					leaf := p.NixAttr
+					if idx := strings.LastIndex(leaf, "."); idx >= 0 {
+						leaf = leaf[idx+1:]
+					}
+					if leaf == ra.Old {
+						prefix := ""
+						if idx := strings.LastIndex(p.NixAttr, "."); idx >= 0 {
+							prefix = p.NixAttr[:idx+1]
+						}
+						nixPkgs[j].NixAttr = prefix + ra.New
+						green.Printf("  ✓ Renamed '%s' → '%s'\n", ra.Old, ra.New)
+						break
+					}
+				}
+			}
+			if err := generator.New(info, nixPkgs).Generate(nixDir); err != nil {
+				s.Stop()
+				return fmt.Errorf("regenerate error: %w", err)
+			}
+			continue
 		}
 
 		// FAST PATH: smart re-resolve for missing attributes
@@ -243,7 +273,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 					}
 					// Track the NEW attr so if it fails too, we skip next time
 					failedRepairs[repair] = true
-					// Also track the leaf name — nix reports just the leaf (e.g. 'clearml' not 'python3Packages.clearml')
 					if idx := strings.LastIndex(repair, "."); idx >= 0 {
 						failedRepairs[repair[idx+1:]] = true
 					}

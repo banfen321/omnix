@@ -1,24 +1,39 @@
 package validator
 
 import (
-	"fmt"
 	"os/exec"
 	"regexp"
 	"strings"
 )
 
-var missingAttrRegex = regexp.MustCompile(`error: attribute '([^']+)' missing`)
+var (
+	missingAttrRegex = regexp.MustCompile(`error: attribute '([^']+)' missing`)
+	renamedAttrRegex = regexp.MustCompile(`error: '([^']+)' has been renamed to/replaced by '([^']+)'`)
+)
+
+type RenamedAttr struct {
+	Old string
+	New string
+}
 
 type ValidationResult struct {
 	Output       string
 	MissingAttrs []string
+	RenamedAttrs []RenamedAttr
 	Success      bool
 }
 
-func Validate(nixDir string) *ValidationResult {
-	// Use nix eval to evaluate the devShell directly — this reliably catches attribute errors
+// LockFlake locks the flake inputs once — call before the repair loop
+func LockFlake(nixDir string) {
 	cmd := exec.Command("nix", "--extra-experimental-features", "nix-command flakes",
-		"eval", nixDir+"#devShells.x86_64-linux.default", "--json")
+		"flake", "lock", nixDir)
+	_ = cmd.Run()
+}
+
+// Validate evaluates the devShell with --no-update-lock-file (fast after LockFlake)
+func Validate(nixDir string) *ValidationResult {
+	cmd := exec.Command("nix", "--extra-experimental-features", "nix-command flakes",
+		"eval", nixDir+"#devShells.x86_64-linux.default", "--json", "--no-update-lock-file")
 	output, err := cmd.CombinedOutput()
 	outStr := strings.TrimSpace(string(output))
 
@@ -26,7 +41,7 @@ func Validate(nixDir string) *ValidationResult {
 		return &ValidationResult{Output: outStr, Success: true}
 	}
 
-	// Parse all missing attributes from the error output
+	// Parse missing attributes
 	var missing []string
 	matches := missingAttrRegex.FindAllStringSubmatch(outStr, -1)
 	for _, m := range matches {
@@ -35,27 +50,19 @@ func Validate(nixDir string) *ValidationResult {
 		}
 	}
 
+	// Parse renamed attributes
+	var renamed []RenamedAttr
+	rmatches := renamedAttrRegex.FindAllStringSubmatch(outStr, -1)
+	for _, m := range rmatches {
+		if len(m) > 2 {
+			renamed = append(renamed, RenamedAttr{Old: m[1], New: m[2]})
+		}
+	}
+
 	return &ValidationResult{
 		Output:       outStr,
 		MissingAttrs: missing,
+		RenamedAttrs: renamed,
 		Success:      false,
 	}
-}
-
-// Check is kept for backward compatibility but uses Validate internally
-func Check(nixDir string) (string, error) {
-	result := Validate(nixDir)
-	if result.Success {
-		return result.Output, nil
-	}
-	return result.Output, fmt.Errorf("check failed")
-}
-
-func Eval(nixDir string) error {
-	cmd := exec.Command("nix", "--extra-experimental-features", "nix-command flakes", "eval", nixDir+"#devShells.x86_64-linux.default", "--json")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("eval error: %s", strings.TrimSpace(string(output)))
-	}
-	return nil
 }
