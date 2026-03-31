@@ -20,10 +20,6 @@
           # Use vendor directory to avoid needing to calculate vendorHash
           vendorHash = null;
 
-          postInstall = ''
-            mv $out/bin/omnix $out/bin/omnix
-          '';
-
           meta = with pkgs.lib; {
             description = "Zero-config AI generator for Nix flake environments";
             homepage = "https://github.com/banfen321/omnix";
