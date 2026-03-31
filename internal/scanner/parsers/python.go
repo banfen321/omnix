@@ -158,6 +158,9 @@ func (p *PythonParser) Parse(dir string) ([]Dep, error) {
 	sysDeps := make(map[string]bool)
 	for _, pkg := range pipPkgs {
 		normalized := strings.ToLower(strings.ReplaceAll(pkg, "_", "-"))
+		if isLocalModule(dir, normalized) || isLocalModule(dir, pkg) {
+			continue
+		}
 		if nixDeps, ok := pythonSysDeps[normalized]; ok {
 			for _, nd := range nixDeps {
 				sysDeps[nd] = true
@@ -202,7 +205,7 @@ func extractPythonImports(dir string) []string {
 				if len(parts) >= 2 {
 					pkg := strings.Split(parts[1], ".")[0]
 					pkg = strings.Trim(pkg, "';\",")
-					if pkg != "" && !pythonStdlib[pkg] {
+					if pkg != "" && !pythonStdlib[pkg] && !isLocalModule(dir, pkg) {
 						imports[pkg] = true
 					}
 				}
@@ -211,7 +214,7 @@ func extractPythonImports(dir string) []string {
 				if len(parts) >= 2 {
 					pkg := strings.Split(parts[1], ".")[0]
 					pkg = strings.Trim(pkg, "';\",")
-					if pkg != "" && !pythonStdlib[pkg] && !strings.HasPrefix(pkg, ".") {
+					if pkg != "" && !pythonStdlib[pkg] && !strings.HasPrefix(pkg, ".") && !isLocalModule(dir, pkg) {
 						imports[pkg] = true
 					}
 				}
@@ -499,4 +502,19 @@ func dedup(deps []Dep) []Dep {
 		}
 	}
 	return result
+}
+func isLocalModule(dir, pkg string) bool {
+	// check if dir/pkg.py exists
+	if _, err := os.Stat(filepath.Join(dir, pkg+".py")); err == nil {
+		return true
+	}
+	// check if dir/pkg/__init__.py exists
+	if _, err := os.Stat(filepath.Join(dir, pkg, "__init__.py")); err == nil {
+		return true
+	}
+	// check if dir/pkg is a directory
+	if info, err := os.Stat(filepath.Join(dir, pkg)); err == nil && info.IsDir() {
+		return true
+	}
+	return false
 }

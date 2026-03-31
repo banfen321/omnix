@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -180,14 +181,45 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	s.Suffix = " Validating flake..."
+	missingAttrRegex := regexp.MustCompile(`error: attribute '([^']+)' missing`)
 
-	if err := validator.Check(nixDir); err != nil {
+	for i := 0; i < 5; i++ {
+		output, err := validator.Check(nixDir)
+		if err == nil {
+			s.Stop()
+			green.Println("  ✓ Validation passed")
+			break
+		}
+
+		// Try to fix "attribute missing" errors
+		matches := missingAttrRegex.FindStringSubmatch(output)
+		if len(matches) > 1 {
+			badAttr := matches[1]
+			// Find and remove the package from our list
+			var kept []resolver.NixPackage
+			found := false
+			for _, p := range nixPkgs {
+				if p.NixAttr == badAttr {
+					found = true
+					continue
+				}
+				kept = append(kept, p)
+			}
+
+			if found {
+				nixPkgs = kept
+				// Re-generate with updated package list
+				_ = generator.New(info, nixPkgs).Generate(nixDir)
+				yellow.Printf("  ⚠ Attribute '%s' missing in nixpkgs. Skipping and relying on language PM.\n", badAttr)
+				continue
+			}
+		}
+
+		// If we reach here, it's either an unfixable error or no more matches
 		s.Stop()
-		yellow.Printf("  ⚠ Validation warning: %s\n", err)
+		yellow.Printf("  ⚠ Validation warning: %s\n", output)
 		dim.Println("    flake.nix was generated but may need manual adjustments")
-	} else {
-		s.Stop()
-		green.Println("  ✓ Validation passed")
+		break
 	}
 
 	if err := db.PutCache(projectHash, nixDir); err != nil {

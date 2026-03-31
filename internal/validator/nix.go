@@ -6,17 +6,17 @@ import (
 	"strings"
 )
 
-func Check(nixDir string) error {
+func Check(nixDir string) (string, error) {
 	cmd := exec.Command("nix", "--extra-experimental-features", "nix-command flakes", "flake", "check", nixDir, "--no-build")
 	output, err := cmd.CombinedOutput()
+	outStr := strings.TrimSpace(string(output))
 	if err != nil {
-		errMsg := strings.TrimSpace(string(output))
-		if errMsg == "" {
-			errMsg = err.Error()
+		if outStr == "" {
+			outStr = err.Error()
 		}
-		return fmt.Errorf("%s", errMsg)
+		return outStr, fmt.Errorf("check failed")
 	}
-	return nil
+	return outStr, nil
 }
 
 func Eval(nixDir string) error {
