@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/banfen321/OmniNix/internal/config"
-	"github.com/banfen321/OmniNix/internal/indexer"
-	"github.com/banfen321/OmniNix/internal/storage"
-	"github.com/banfen321/OmniNix/internal/syncer"
+	"github.com/banfen321/omnix/internal/config"
+	"github.com/banfen321/omnix/internal/indexer"
+	"github.com/banfen321/omnix/internal/storage"
+	"github.com/banfen321/omnix/internal/syncer"
 	"github.com/spf13/cobra"
 )
 

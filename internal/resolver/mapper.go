@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/banfen321/OmniNix/internal/config"
-	"github.com/banfen321/OmniNix/internal/scanner"
-	"github.com/banfen321/OmniNix/internal/storage"
+	"github.com/banfen321/omnix/internal/config"
+	"github.com/banfen321/omnix/internal/scanner"
+	"github.com/banfen321/omnix/internal/storage"
 )
 
 type NixPackage struct {

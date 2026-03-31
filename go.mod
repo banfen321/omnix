@@ -1,4 +1,4 @@
-module github.com/banfen321/OmniNix
+module github.com/banfen321/omnix
 
 go 1.25.0
 

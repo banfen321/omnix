@@ -8,8 +8,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/banfen321/OmniNix/internal/resolver"
-	"github.com/banfen321/OmniNix/internal/scanner"
+	"github.com/banfen321/omnix/internal/resolver"
+	"github.com/banfen321/omnix/internal/scanner"
 )
 
 type Generator struct {

@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/banfen321/OmniNix/internal/config"
-	"github.com/banfen321/OmniNix/internal/storage"
+	"github.com/banfen321/omnix/internal/config"
+	"github.com/banfen321/omnix/internal/storage"
 )
 
 type Syncer struct {

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/banfen321/OmniNix/internal/config"
+	"github.com/banfen321/omnix/internal/config"
 	"github.com/spf13/cobra"
 )
 

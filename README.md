@@ -21,12 +21,12 @@ Before using `omnix`, you need two things installed on your system:
 ### 1. Install `omnix`
 **Using Nix (Recommended):**
 ```bash
-nix profile install github:banfen321/OmniNix
+nix profile install github:banfen321/omnix
 ```
 
 **Using Go:**
 ```bash
-go install github.com/banfen321/OmniNix@latest
+go install github.com/banfen321/omnix@latest
 ```
 
 ### 2. Configure API Key

@@ -1,5 +1,5 @@
 {
-  description = "OmniNix - AI-Powered Nix Dev Environment Generator";
+  description = "omnix - AI-Powered Nix Dev Environment Generator";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -21,12 +21,12 @@
           vendorHash = null;
 
           postInstall = ''
-            mv $out/bin/OmniNix $out/bin/omnix
+            mv $out/bin/omnix $out/bin/omnix
           '';
 
           meta = with pkgs.lib; {
             description = "Zero-config AI generator for Nix flake environments";
-            homepage = "https://github.com/banfen321/OmniNix";
+            homepage = "https://github.com/banfen321/omnix";
             license = licenses.mit;
             mainProgram = "omnix";
           };

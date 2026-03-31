@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/banfen321/OmniNix/internal/storage"
+	"github.com/banfen321/omnix/internal/storage"
 )
 
 type Indexer struct {

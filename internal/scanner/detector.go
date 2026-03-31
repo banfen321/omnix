@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/banfen321/OmniNix/internal/scanner/parsers"
+	"github.com/banfen321/omnix/internal/scanner/parsers"
 )
 
 type Dependency struct {

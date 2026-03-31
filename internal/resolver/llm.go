@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/banfen321/OmniNix/internal/config"
+	"github.com/banfen321/omnix/internal/config"
 )
 
 type LLMClient struct {

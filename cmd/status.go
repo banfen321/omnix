@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/banfen321/OmniNix/internal/config"
-	"github.com/banfen321/OmniNix/internal/storage"
+	"github.com/banfen321/omnix/internal/config"
+	"github.com/banfen321/omnix/internal/storage"
 	"github.com/spf13/cobra"
 )
 

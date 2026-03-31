@@ -83,7 +83,7 @@ func helpTemplate() string {
 		bold.Sprint("Help:"),
 		bold.Sprint("Version:"),
 		fmt.Sprintf("omnix v%s (%s)", Version, Commit),
-		dim.Sprint("https://github.com/banfen321/OmniNix"),
+		dim.Sprint("https://github.com/banfen321/omnix"),
 	)
 }
 

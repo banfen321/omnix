@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/banfen321/OmniNix/internal/config"
-	"github.com/banfen321/OmniNix/internal/generator"
-	"github.com/banfen321/OmniNix/internal/resolver"
-	"github.com/banfen321/OmniNix/internal/scanner"
-	"github.com/banfen321/OmniNix/internal/storage"
-	"github.com/banfen321/OmniNix/internal/validator"
+	"github.com/banfen321/omnix/internal/config"
+	"github.com/banfen321/omnix/internal/generator"
+	"github.com/banfen321/omnix/internal/resolver"
+	"github.com/banfen321/omnix/internal/scanner"
+	"github.com/banfen321/omnix/internal/storage"
+	"github.com/banfen321/omnix/internal/validator"
 	"github.com/spf13/cobra"
 )
 
