@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -203,12 +204,38 @@ func runScan(cmd *cobra.Command, args []string) error {
 	cmdDirenv.Stderr = os.Stderr
 	if err := cmdDirenv.Run(); err != nil {
 		if strings.Contains(err.Error(), "executable file not found") {
+			fmt.Println()
 			yellow.Println("  ⚠ 'direnv' is not installed in your system!")
 			dim.Println("    direnv is required for MAGIC auto-activation when you enter the folder.")
-			dim.Println("    To install it globally, run:")
-			bold.Println("      nix --extra-experimental-features \"nix-command flakes\" profile install nixpkgs#direnv nixpkgs#nix-direnv")
-			dim.Println("    And add this to your ~/.zshrc or ~/.bashrc:")
-			bold.Println("      eval \"$(direnv hook $(basename $SHELL))\"")
+
+			fmt.Printf("  ▶ Would you like omnix to install it globally for you using Nix? (Y/n): ")
+			reader := bufio.NewReader(os.Stdin)
+			ans, _ := reader.ReadString('\n')
+			ans = strings.TrimSpace(strings.ToLower(ans))
+			fmt.Println()
+
+			if ans == "" || ans == "y" || ans == "yes" {
+				bold.Println("  ⏳ Installing direnv via nix profile...")
+				cmdInst := exec.Command("nix", "--extra-experimental-features", "nix-command flakes", "profile", "install", "nixpkgs#direnv", "nixpkgs#nix-direnv")
+				cmdInst.Stdout = os.Stdout
+				cmdInst.Stderr = os.Stderr
+				if err := cmdInst.Run(); err != nil {
+					yellow.Printf("\n  ⚠ Failed to install direnv: %s\n", err)
+				} else {
+					green.Println("\n  ✓ direnv installed successfully!")
+					dim.Println("    Please add this line to your ~/.zshrc or ~/.bashrc to enable it:")
+					bold.Println("      eval \"$(direnv hook $(basename $SHELL))\"")
+
+					// try again just in case
+					exec.Command("direnv", "allow").Run()
+				}
+			} else {
+				dim.Println("    To install it manually later, run:")
+				bold.Println("      nix --extra-experimental-features \"nix-command flakes\" profile install nixpkgs#direnv nixpkgs#nix-direnv")
+				dim.Println("    And add this to your ~/.zshrc or ~/.bashrc:")
+				bold.Println("      eval \"$(direnv hook $(basename $SHELL))\"")
+			}
+
 			fmt.Println()
 			green.Println("  ✓ But your Nix environment is built!")
 			bold.Println("  ▶ To enter it manually right now, run: nix --extra-experimental-features \"nix-command flakes\" develop ./.nix")

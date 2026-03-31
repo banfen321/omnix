@@ -55,8 +55,8 @@ func runConf(cmd *cobra.Command, args []string) error {
 	cyan.Println("  omnix configuration")
 	fmt.Println()
 
-	cfg.APIProvider = prompt(reader, "API provider (openrouter/google)", cfg.APIProvider)
-	newKey := prompt(reader, "API key", maskKey(cfg.APIKey))
+	cfg.APIProvider = prompt(reader, "API Provider (openrouter / google)", cfg.APIProvider)
+	newKey := prompt(reader, "API Key", maskKey(cfg.APIKey))
 	if newKey != maskKey(cfg.APIKey) {
 		cfg.APIKey = newKey
 	}
