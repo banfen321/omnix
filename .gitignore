@@ -1,5 +1,6 @@
 nixenv
 nixenv-agent
+omnix
 dist/
 *.db
 *.sqlite

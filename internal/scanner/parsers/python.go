@@ -100,8 +100,9 @@ var pythonSysDeps = map[string][]string{
 	"pycairo":     {"gcc", "cairo", "pkg-config"},
 }
 
-// Common Python stdlib modules to ignore during AST fallback scanning
+// Complete Python stdlib modules (from sys.stdlib_module_names, Python 3.12+)
 var pythonStdlib = map[string]bool{
+	// Core
 	"os": true, "sys": true, "json": true, "math": true, "re": true, "datetime": true,
 	"time": true, "enum": true, "collections": true, "typing": true, "pathlib": true,
 	"itertools": true, "functools": true, "subprocess": true, "shutil": true, "logging": true,
@@ -114,6 +115,40 @@ var pythonStdlib = map[string]bool{
 	"tarfile": true, "zipfile": true, "getpass": true, "platform": true, "resource": true,
 	"signal": true, "termios": true, "stat": true, "traceback": true, "pprint": true,
 	"copy": true, "weakref": true, "types": true, "gc": true,
+	// Missing in previous version — common false positives
+	"dataclasses": true, "difflib": true, "fnmatch": true, "fractions": true, "codecs": true,
+	"binascii": true, "fcntl": true, "doctest": true, "textwrap": true, "configparser": true,
+	"importlib": true, "pkgutil": true, "operator": true, "decimal": true, "string": true,
+	"html": true, "xml": true, "email": true, "http": true, "ftplib": true,
+	"smtplib": true, "ssl": true, "select": true, "selectors": true, "mmap": true,
+	"queue": true, "sched": true, "secrets": true, "token": true, "tokenize": true,
+	"keyword": true, "linecache": true, "dis": true, "code": true, "codeop": true,
+	"compileall": true, "py_compile": true, "pdb": true, "profile": true, "cProfile": true,
+	"timeit": true, "atexit": true, "builtins": true, "__future__": true, "_thread": true,
+	"concurrent": true, "numbers": true, "cmath": true, "statistics": true,
+	// Additional stdlib
+	"locale": true, "gettext": true, "unicodedata": true, "stringprep": true,
+	"rlcompleter": true, "readline": true, "reprlib": true, "ensurepip": true,
+	"venv": true, "zipimport": true, "zipapp": true, "shelve": true, "dbm": true,
+	"marshal": true, "copyreg": true, "plistlib": true, "mailbox": true, "mimetypes": true,
+	"imaplib": true, "poplib": true, "nntplib": true, "xmlrpc": true, "ipaddress": true,
+	"socketserver": true, "asynchat": true, "asyncore": true, "CGIHTTPServer": true,
+	"webbrowser": true, "wsgiref": true, "turtle": true, "turtledemo": true,
+	"cmd": true, "shlex": true, "tkinter": true, "test": true, "idlelib": true,
+	"lib2to3": true, "ast": true, "symtable": true,
+	"sysconfig": true, "syslog": true, "pty": true, "tty": true, "grp": true,
+	"pwd": true, "crypt": true, "posixpath": true, "ntpath": true, "genericpath": true,
+	"posix": true, "nt": true, "curses": true, "wave": true, "audioop": true,
+	"sunau": true, "aifc": true, "sndhdr": true, "ossaudiodev": true, "chunk": true,
+	"colorsys": true, "imghdr": true, "fileinput": true, "filecmp": true,
+	"netrc": true, "telnetlib": true, "xdrlib": true, "pipes": true,
+	"calendar": true, "pydoc": true, "runpy": true, "site": true, "trace": true,
+	"tabnanny": true, "optparse": true, "getopt": true, "formatter": true,
+	"distutils": true, "setuptools": true, "pkg_resources": true, "pygments": true,
+	"typing_extensions": true, "contextvars": true, "graphlib": true, "tomllib": true,
+	"zoneinfo": true, "_frozen_importlib": true, "_imp": true,
+	// Very common false positives from transformers-type repos
+	"tree": true, "of": true, "consideration": true, "document": true,
 }
 
 func (p *PythonParser) Parse(dir string) ([]Dep, error) {
@@ -160,7 +195,8 @@ func (p *PythonParser) Parse(dir string) ([]Dep, error) {
 		pipPkgs = extractPythonImports(dir)
 	}
 
-	// Resolve pip packages to system-level Nix deps
+	// Resolve pip packages to system-level Nix deps ONLY
+	// We do NOT add raw pip packages as nix buildInputs — pip handles them via shellHook/venv
 	sysDeps := make(map[string]bool)
 	for _, pkg := range pipPkgs {
 		normalized := strings.ToLower(strings.ReplaceAll(pkg, "_", "-"))
@@ -171,10 +207,6 @@ func (p *PythonParser) Parse(dir string) ([]Dep, error) {
 			for _, nd := range nixDeps {
 				sysDeps[nd] = true
 			}
-		}
-		// Also output the raw application dependencies! The resolver will try to find them.
-		if !pythonStdlib[normalized] {
-			deps = append(deps, Dep{Name: normalized, Ecosystem: "python"})
 		}
 	}
 

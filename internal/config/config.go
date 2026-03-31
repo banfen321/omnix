@@ -20,8 +20,8 @@ type Config struct {
 func Default() *Config {
 	return &Config{
 		APIProvider:   "openrouter",
-		FastModel:     "google/gemini-3.1-flash-lite-preview",
-		SmartModel:    "anthropic/claude-sonnet-4.6",
+		FastModel:     "google/gemini-2.5-flash",
+		SmartModel:    "anthropic/claude-sonnet-4",
 		AutoGitignore: true,
 		SQLitePath:    filepath.Join(configDir(), "omnix.db"),
 	}

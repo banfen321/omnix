@@ -183,13 +183,16 @@ func runScan(cmd *cobra.Command, args []string) error {
 	validator.LockFlake(nixDir)
 
 	s.Suffix = " Validating flake..."
-	failedRepairs := make(map[string]bool) // track attrs that were already repaired once
+	failedRepairs := make(map[string]bool)
+	validationPassed := false
+	llmAttempted := false
 
 	for i := 0; i < 100; i++ {
 		result := validator.Validate(nixDir)
 		if result.Success {
 			s.Stop()
 			green.Println("  ✓ Validation passed")
+			validationPassed = true
 			break
 		}
 
@@ -287,7 +290,14 @@ func runScan(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		// SLOW PATH: LLM fallback for errors we can't parse with regex
+		// SLOW PATH: LLM fallback — limited to 1 attempt only
+		if llmAttempted {
+			s.Stop()
+			yellow.Printf("  ⚠ Validation failed: %s\n", result.Output)
+			dim.Println("    flake.nix was generated but may need manual adjustments")
+			break
+		}
+		llmAttempted = true
 		s.Suffix = " Fixing flake errors via LLM..."
 		flakePath := filepath.Join(nixDir, "flake.nix")
 		flakeContent, errRead := os.ReadFile(flakePath)
@@ -311,8 +321,10 @@ func runScan(cmd *cobra.Command, args []string) error {
 		yellow.Println("  ⚠ LLM auto-fixed flake error. Retrying...")
 	}
 
-	if err := db.PutCache(projectHash, nixDir); err != nil {
-		dim.Printf("  cache warning: %s\n", err)
+	if validationPassed {
+		if err := db.PutCache(projectHash, nixDir); err != nil {
+			dim.Printf("  cache warning: %s\n", err)
+		}
 	}
 
 	fmt.Println()
