@@ -53,23 +53,31 @@ Produces:
 - Go: sets `GOPATH` and `PATH`
 - Rust: sets `RUST_BACKTRACE=1`
 
-### 4. Storage (`internal/storage/`)
+### 4. Validator/Self-Healing Loop (`internal/validator/`)
+
+Once the `flake.nix` is generated, `omnix` invokes a self-healing validation loop (up to 100 tries):
+1. **Validation Check**: Evaluates the flake and captures error output.
+2. **Instant Path**: If attributes were simply renamed in nixpkgs (e.g., `github3_py` → `github3-py`), it auto-corrects them instantly.
+3. **Fast Path**: For missing Nix attributes, it evaluates context using the "fast model" (LLM) to either find the correct attribute or explicitly "SKIP" it (letting `pip`/`npm` handle it at runtime).
+4. **Slow Path**: For complex compilation/syntax errors, it falls back to the "smart model" by passing the raw `flake.nix` and error trace for an AI-generated fix (limited to 1 attempt).
+
+### 5. Storage (`internal/storage/`)
 
 All data lives entirely locally on your machine in a single SQLite database at `~/.config/omnix/omnix.sqlite`. It contains:
-- `cache` — Remembers what environments we've already generated so re-running `scan` is instant.
+- `cache` — Remembers what environments we've already generated (hashed via project files) so re-running `scan` is instant.
 - `versions` — Stores recent exact package versions.
 - `nixpkgs_fts` — The powerhouse! This is an FTS5 virtual table for lightning-fast full-text searches across Nixpkgs.
 
-### 5. Indexer (`internal/indexer/`)
+### 6. Indexer (`internal/indexer/`)
 
 When you run `omnix sync`, the Indexer runs `nix search nixpkgs --json` under the hood. It downloads the massive Nixpkgs JSON index and inserts all ~107k+ packages directly into the SQLite FTS5 table. Thanks to Go's concurrency and SQLite's speed, this entire process usually takes just 3 to 5 seconds!
 
 ### Config (`internal/config/`)
 
-TOML config at `~/.config/omnix/config.toml`:
+TOML config at `~/.config/omnix/config.toml` (managed via `omnix conf`):
 
 ```toml
-api_provider = "openrouter"
+api_provider = "openrouter" # or "google"
 api_key = "..."
 fast_model = "google/gemini-3.1-flash-lite-preview"
 smart_model = "anthropic/claude-sonnet-4.6"

@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          check-latest: true
+
+      - name: Get Version
+        id: vars
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "COMMIT=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Build Binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          OUT_NAME=omnix-${{ matrix.goos }}-${{ matrix.goarch }}
+          # Build with standard optimized flags and setting Version variables dynamically
+          go build -ldflags="-s -w -X 'github.com/banfen321/omnix/cmd.Version=${VERSION}' -X 'github.com/banfen321/omnix/cmd.Commit=${COMMIT}'" -o ${OUT_NAME} .
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: omnix-*
+          generate_release_notes: true

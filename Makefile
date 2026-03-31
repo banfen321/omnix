@@ -1,10 +1,10 @@
 .PHONY: build install test lint update deps
 
-VERSION ?= 0.1.0
+VERSION ?= 0.1.1
 BIN_NAME = omnix
 
 build:
-	go build -ldflags "-s -w -X main.Version=$(VERSION)" -o $(BIN_NAME) ./...
+	go build -ldflags "-s -w -X main.Version=$(VERSION)" -o $(BIN_NAME) .
 
 install: build
 	go install -ldflags "-s -w -X main.Version=$(VERSION)" .

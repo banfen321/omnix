@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	Version = "0.1.0"
-	Commit  = "dev"
+	Version = "0.5.3"
+	Commit  = "production-ready"
 )
 
 var (

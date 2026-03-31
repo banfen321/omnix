@@ -19,6 +19,17 @@ Before using `omnix`, you need two things installed on your system:
 ## ⚡ Quick Start
 
 ### 1. Install `omnix`
+
+**Using Pre-compiled Binary:**
+Download the executable for your OS from the [Releases](https://github.com/banfen321/omnix/releases) page.
+```bash
+# Example for NixOS / Linux (amd64)
+curl -LO https://github.com/banfen321/omnix/releases/latest/download/omnix-linux-amd64
+chmod +x omnix-linux-amd64
+mkdir -p ~/.local/bin
+mv omnix-linux-amd64 ~/.local/bin/omnix
+```
+
 **Using Nix (Recommended):**
 ```bash
 nix --extra-experimental-features "nix-command flakes" profile install github:banfen321/omnix
@@ -59,22 +70,24 @@ When you run `scan`, here is what happens:
 3. **AST Fallback:** No `requirements.txt`? No problem. The tool will parse your actual source code (like `import pandas`) to figure out what you're building.
 4. **Local Resolution:** It searches your local SQLite database (`~/.config/omnix/omnix.sqlite`) in microseconds to find the exact Nix attributes for your dependencies.
 5. **Generation:** It writes a minimalist `.nix/flake.nix` file and sets up a `shellHook` that will *automatically* run `pip install`, `npm ci`, etc., the moment you enter the folder!
+6. **Self-Healing Loop:** It verifies the output with `nix flake check`. If anything is broken, it seamlessly interrogates your configured LLMs to fix attribute names and rewrite your flake before you even see it.
 
 ## 📜 Commands
 
 | Command | Description |
 |---------|-------------|
-| `omnix scan` | Scan project and generate `.nix/` environment |
-| `omnix update` | Force re-scan (ignores cache) |
-| `omnix sync` | Index nixpkgs into your local SQLite DB |
-| `omnix conf` | Configure API keys and model settings |
-| `omnix status` | Show current environment status |
-| `omnix rm` | Remove generated `.nix/` files |
+| `omnix scan` | Scan project and generate `.nix/` environment. Flags: `--dry-run`, `--force` (`-f`), `--no-gitignore` |
+| `omnix update` | Force re-scan (ignores cache). Alias for `omnix scan --force` |
+| `omnix sync` | Index nixpkgs into your local SQLite DB. Flags: `--auto [interval]` (e.g. `24h`) |
+| `omnix conf` | Configure API keys and settings. Subcommands: `set [k] [v]`, `get [k]`, `show` |
+| `omnix status` | Show current environment status, direnv status, and cache |
+| `omnix rm` | Remove generated `.nix/` directory and `.envrc`. Alias: `remove` |
+| `omnix version` | Show omnix version. Alias: `v` |
 
 ## 🏗️ Architecture
 
 ```
-CLI → Scanner (Manifests/AST) → Resolver (Static Map → SQLite → LLM Fallback) → Generator
+CLI → Scanner (Manifests/AST) → Resolver (Static Map → Version DB → SQLite FTS5) → Generator → Validator (Self-Healing Loop)
 ```
 - **Database Location:** `~/.config/omnix/omnix.sqlite`
 - **Config Location:** `~/.config/omnix/config.toml`
