@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+
 	"github.com/banfen321/omnix/internal/config"
 	"github.com/banfen321/omnix/internal/generator"
 	"github.com/banfen321/omnix/internal/resolver"
@@ -180,16 +181,37 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	s.Suffix = " Validating flake..."
 
-	for i := 0; i < 3; i++ { // Try up to 3 times to fix the flake
-		output, err := validator.Check(nixDir)
-		if err == nil {
+	for i := 0; i < 10; i++ {
+		result := validator.Validate(nixDir)
+		if result.Success {
 			s.Stop()
 			green.Println("  ✓ Validation passed")
 			break
 		}
 
-		// Try to fix the flake using LLM
-		s.Suffix = " Fixing flake errors automatically..."
+		// FAST PATH: deterministic regex-based fix for missing attributes
+		if len(result.MissingAttrs) > 0 {
+			for _, badAttr := range result.MissingAttrs {
+				var kept []resolver.NixPackage
+				for _, p := range nixPkgs {
+					if p.NixAttr == badAttr || strings.HasSuffix(p.NixAttr, "."+badAttr) {
+						continue
+					}
+					kept = append(kept, p)
+				}
+				nixPkgs = kept
+				yellow.Printf("  ⚠ Pruned '%s' (missing in nixpkgs).\n", badAttr)
+			}
+			// Regenerate flake from template with the cleaned package list
+			if err := generator.New(info, nixPkgs).Generate(nixDir); err != nil {
+				s.Stop()
+				return fmt.Errorf("regenerate error: %w", err)
+			}
+			continue
+		}
+
+		// SLOW PATH: LLM fallback for errors we can't parse with regex
+		s.Suffix = " Fixing flake errors via LLM..."
 		flakePath := filepath.Join(nixDir, "flake.nix")
 		flakeContent, errRead := os.ReadFile(flakePath)
 		if errRead != nil {
@@ -197,20 +219,19 @@ func runScan(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("read flake: %w", errRead)
 		}
 
-		fixed, fixErr := res.FixFlake(string(flakeContent), output)
+		fixed, fixErr := res.FixFlake(string(flakeContent), result.Output)
 		if fixErr != nil {
 			s.Stop()
-			yellow.Printf("  ⚠ Failed to auto-fix: %s\n", fixErr)
-			dim.Println("    (Error: " + output + ")")
+			yellow.Printf("  ⚠ Validation warning: %s\n", result.Output)
+			dim.Println("    flake.nix was generated but may need manual adjustments")
 			break
 		}
 
-		// Write fixed flake and try again
-		if errWrite := os.WriteFile(flakePath, []byte(fixed), 0o644); errWrite != nil {
+		if err := os.WriteFile(flakePath, []byte(fixed), 0o644); err != nil {
 			s.Stop()
-			return fmt.Errorf("write fixed flake: %w", errWrite)
+			return fmt.Errorf("write fixed flake: %w", err)
 		}
-		yellow.Println("  ⚠ Automatically fixed one or more environment errors. Retrying...")
+		yellow.Println("  ⚠ LLM auto-fixed flake error. Retrying...")
 	}
 
 	if err := db.PutCache(projectHash, nixDir); err != nil {
