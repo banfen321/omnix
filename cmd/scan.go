@@ -437,17 +437,41 @@ func hookDirenvToRC() {
 	if strings.Contains(shell, "zsh") {
 		rcFile = filepath.Join(home, ".zshrc")
 		hookCmd = `eval "$(direnv hook zsh)"`
+	} else if strings.Contains(shell, "fish") {
+		rcFile = filepath.Join(home, ".config/fish/config.fish")
+		hookCmd = `direnv hook fish | source`
 	}
 
 	content, err := os.ReadFile(rcFile)
-	if err == nil && strings.Contains(string(content), "direnv hook") {
-		return
-	}
+	contentStr := string(content)
 
 	f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err == nil {
-		defer f.Close()
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	var added []string
+
+	// Add direnv hook if missing
+	if !strings.Contains(contentStr, "direnv hook") {
 		f.WriteString("\n# Added by omnix\n" + hookCmd + "\n")
-		dim.Printf("    ✓ Successfully added direnv hook to %s (Restart terminal to apply)\n", rcFile)
+		added = append(added, "direnv hook")
+	}
+
+	// Silence noisy export logs
+	if !strings.Contains(contentStr, "DIRENV_LOG_FORMAT") {
+		f.WriteString("export DIRENV_LOG_FORMAT=\"\"\n")
+		added = append(added, "silent direnv logs")
+	}
+
+	// Source nix-direnv for caching
+	if !strings.Contains(contentStr, "nix-direnv") {
+		f.WriteString("source $HOME/.nix-profile/share/nix-direnv/direnvrc 2>/dev/null\n")
+		added = append(added, "nix-direnv cache")
+	}
+
+	if len(added) > 0 {
+		dim.Printf("    ✓ Added %s to %s (Restart terminal to apply)\n", strings.Join(added, ", "), rcFile)
 	}
 }
