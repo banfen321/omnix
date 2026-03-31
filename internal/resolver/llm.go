@@ -66,7 +66,11 @@ Common causes of errors:
 - Typos in package names.
 - Packages not available in the current nixpkgs version.
 
-Return ONLY the corrected flake.nix content, no comments, no explanation.
+OUTPUT FORMAT REQUIREMENTS:
+- You MUST return ONLY the raw, exact, fully functioning Nix code.
+- DO NOT wrap the code in markdown blocks (no `+"```"+`nix or `+"```"+`).
+- DO NOT include ANY explanations or conversational text.
+- If the error is about a lock file or something outside flake.nix, just return the exact original flake.nix back! Do NOT try to explain!
 
 Error:
 %s

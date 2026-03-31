@@ -40,9 +40,10 @@ func (g *Generator) Generate(nixDir string) error {
 		return fmt.Errorf("write flake.nix: %w", err)
 	}
 
-	// If in a git repo, we MUST add the .nix dir to git for nix to see it
+	// If in a git repo, we MUST add the flake files to git for nix to see them.
+	// We use -A and -f because .nix/ might be in .gitignore
 	if _, err := os.Stat(filepath.Join(filepath.Dir(nixDir), ".git")); err == nil {
-		_ = exec.Command("git", "-C", filepath.Dir(nixDir), "add", ".nix").Run()
+		_ = exec.Command("git", "-C", filepath.Dir(nixDir), "add", "-f", ".nix").Run()
 	}
 
 	return nil
