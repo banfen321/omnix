@@ -1,7 +1,9 @@
 package validator
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -28,6 +30,12 @@ func LockFlake(nixDir string) {
 	cmd := exec.Command("nix", "--extra-experimental-features", "nix-command flakes",
 		"flake", "lock", nixDir)
 	_ = cmd.Run()
+
+	// If in a git repo, we MUST add the generated lock file to git.
+	// Otherwise nix eval --no-update-lock-file will fail because it ignores untracked files in git repositories
+	if _, err := os.Stat(filepath.Join(filepath.Dir(nixDir), ".git")); err == nil {
+		_ = exec.Command("git", "-C", filepath.Dir(nixDir), "add", "-f", ".nix/flake.lock").Run()
+	}
 }
 
 // Validate evaluates the devShell with --no-update-lock-file (fast after LockFlake)
