@@ -330,6 +330,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	bold.Println("  Activating via direnv...")
 
+	hookDirenvToRC()
+
 	cmdDirenv := exec.Command("direnv", "allow")
 	cmdDirenv.Dir = dir
 	cmdDirenv.Stdout = os.Stdout
@@ -348,7 +350,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 				yellow.Printf("\n  ⚠ Failed to install direnv: %s\n", err)
 			} else {
 				green.Println("\n  ✓ direnv installed successfully!")
-				hookDirenvToRC()
 				dim.Println("    Please RESTART your terminal or run this command ONCE to activate it now:")
 				bold.Println("      eval \"$(direnv hook $(basename $SHELL))\"")
 
@@ -465,13 +466,19 @@ func hookDirenvToRC() {
 		added = append(added, "silent direnv logs")
 	}
 
-	// Source nix-direnv for caching
-	if !strings.Contains(contentStr, "nix-direnv") {
-		f.WriteString("source $HOME/.nix-profile/share/nix-direnv/direnvrc 2>/dev/null\n")
-		added = append(added, "nix-direnv cache")
+	// Source nix-direnv for caching (must go into ~/.direnvrc, NOT zshrc)
+	direnvrcFile := filepath.Join(home, ".direnvrc")
+	drcContent, _ := os.ReadFile(direnvrcFile)
+	if !strings.Contains(string(drcContent), "nix-direnv") {
+		df, err := os.OpenFile(direnvrcFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err == nil {
+			df.WriteString("source $HOME/.nix-profile/share/nix-direnv/direnvrc 2>/dev/null\n")
+			df.Close()
+			added = append(added, "nix-direnv cache")
+		}
 	}
 
 	if len(added) > 0 {
-		dim.Printf("    ✓ Added %s to %s (Restart terminal to apply)\n", strings.Join(added, ", "), rcFile)
+		dim.Printf("    ✓ Added %s hooks (Restart terminal to apply)\n", strings.Join(added, ", "))
 	}
 }
