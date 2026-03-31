@@ -21,7 +21,7 @@ Before using `omnix`, you need two things installed on your system:
 ### 1. Install `omnix`
 **Using Nix (Recommended):**
 ```bash
-nix profile install github:banfen321/omnix
+nix --extra-experimental-features "nix-command flakes" profile install github:banfen321/omnix
 ```
 
 **Using Go:**
