@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -208,32 +207,19 @@ func runScan(cmd *cobra.Command, args []string) error {
 			yellow.Println("  ⚠ 'direnv' is not installed in your system!")
 			dim.Println("    direnv is required for MAGIC auto-activation when you enter the folder.")
 
-			fmt.Printf("  ▶ Would you like omnix to install it globally for you using Nix? (Y/n): ")
-			reader := bufio.NewReader(os.Stdin)
-			ans, _ := reader.ReadString('\n')
-			ans = strings.TrimSpace(strings.ToLower(ans))
-			fmt.Println()
-
-			if ans == "" || ans == "y" || ans == "yes" {
-				bold.Println("  ⏳ Installing direnv via nix profile...")
-				cmdInst := exec.Command("nix", "--extra-experimental-features", "nix-command flakes", "profile", "install", "nixpkgs#direnv", "nixpkgs#nix-direnv")
-				cmdInst.Stdout = os.Stdout
-				cmdInst.Stderr = os.Stderr
-				if err := cmdInst.Run(); err != nil {
-					yellow.Printf("\n  ⚠ Failed to install direnv: %s\n", err)
-				} else {
-					green.Println("\n  ✓ direnv installed successfully!")
-					dim.Println("    Please add this line to your ~/.zshrc or ~/.bashrc to enable it:")
-					bold.Println("      eval \"$(direnv hook $(basename $SHELL))\"")
-
-					// try again just in case
-					exec.Command("direnv", "allow").Run()
-				}
+			bold.Println("  ⏳ Automatically installing direnv via nix profile...")
+			cmdInst := exec.Command("nix", "--extra-experimental-features", "nix-command flakes", "profile", "install", "nixpkgs#direnv", "nixpkgs#nix-direnv")
+			cmdInst.Stdout = os.Stdout
+			cmdInst.Stderr = os.Stderr
+			if err := cmdInst.Run(); err != nil {
+				yellow.Printf("\n  ⚠ Failed to install direnv: %s\n", err)
 			} else {
-				dim.Println("    To install it manually later, run:")
-				bold.Println("      nix --extra-experimental-features \"nix-command flakes\" profile install nixpkgs#direnv nixpkgs#nix-direnv")
-				dim.Println("    And add this to your ~/.zshrc or ~/.bashrc:")
-				bold.Println("      eval \"$(direnv hook $(basename $SHELL))\"")
+				green.Println("\n  ✓ direnv installed successfully!")
+				dim.Println("    To make it work, your shell needs to load it. Run this command ONCE:")
+				bold.Println("      eval \"$(direnv hook $(basename $SHELL))\" && echo 'eval \"$(direnv hook bash)\"' >> ~/.bashrc")
+
+				// try again just in case
+				exec.Command("direnv", "allow").Run()
 			}
 
 			fmt.Println()
