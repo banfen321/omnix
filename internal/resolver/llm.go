@@ -51,7 +51,11 @@ func (l *LLMClient) GenerateFlake(context string) (string, error) {
 
 %s`, context)
 
-	return l.ask(l.cfg.SmartModel, prompt)
+	resp, err := l.ask(l.cfg.SmartModel, prompt)
+	if err != nil {
+		return "", err
+	}
+	return cleanLLMResponse(resp), nil
 }
 
 func (l *LLMClient) FixFlake(flakeContent, errorMsg string) (string, error) {
@@ -70,7 +74,33 @@ Error:
 Current flake.nix:
 %s`, errorMsg, flakeContent)
 
-	return l.ask(l.cfg.SmartModel, prompt)
+	resp, err := l.ask(l.cfg.SmartModel, prompt)
+	if err != nil {
+		return "", err
+	}
+	return cleanLLMResponse(resp), nil
+}
+
+func cleanLLMResponse(resp string) string {
+	resp = strings.TrimSpace(resp)
+	if strings.HasPrefix(resp, "```") {
+		// Remove first line (the opening ```nix or similar)
+		lines := strings.Split(resp, "\n")
+		if len(lines) > 2 {
+			// Find closing ```
+			var endIdx int
+			for i := len(lines) - 1; i >= 0; i-- {
+				if strings.HasPrefix(strings.TrimSpace(lines[i]), "```") {
+					endIdx = i
+					break
+				}
+			}
+			if endIdx > 1 {
+				return strings.Join(lines[1:endIdx], "\n")
+			}
+		}
+	}
+	return resp
 }
 
 func (l *LLMClient) ask(model, prompt string) (string, error) {
