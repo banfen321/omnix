@@ -215,8 +215,9 @@ func runScan(cmd *cobra.Command, args []string) error {
 				yellow.Printf("\n  ⚠ Failed to install direnv: %s\n", err)
 			} else {
 				green.Println("\n  ✓ direnv installed successfully!")
-				dim.Println("    To make it work, your shell needs to load it. Run this command ONCE:")
-				bold.Println("      eval \"$(direnv hook $(basename $SHELL))\" && echo 'eval \"$(direnv hook bash)\"' >> ~/.bashrc")
+				hookDirenvToRC()
+				dim.Println("    Please RESTART your terminal or run this command ONCE to activate it now:")
+				bold.Println("      eval \"$(direnv hook $(basename $SHELL))\"")
 
 				// try again just in case
 				exec.Command("direnv", "allow").Run()
@@ -288,4 +289,32 @@ func hashProject(dir string) (string, error) {
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func hookDirenvToRC() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	shell := os.Getenv("SHELL")
+	rcFile := filepath.Join(home, ".bashrc")
+	hookCmd := `eval "$(direnv hook bash)"`
+
+	if strings.Contains(shell, "zsh") {
+		rcFile = filepath.Join(home, ".zshrc")
+		hookCmd = `eval "$(direnv hook zsh)"`
+	}
+
+	content, err := os.ReadFile(rcFile)
+	if err == nil && strings.Contains(string(content), "direnv hook") {
+		return
+	}
+
+	f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		defer f.Close()
+		f.WriteString("\n# Added by omnix\n" + hookCmd + "\n")
+		dim.Printf("    ✓ Successfully added direnv hook to %s (Restart terminal to apply)\n", rcFile)
+	}
 }
