@@ -98,10 +98,9 @@ func (p *NodeParser) Parse(dir string) ([]Dep, error) {
 				sysDeps[nd] = true
 			}
 		}
-		// Also output the raw application dependencies! The resolver will try to find them.
-		if !nodeStdlib[npmPkg] {
-			deps = append(deps, Dep{Name: npmPkg, Ecosystem: "node"})
-		}
+		// NOTE: We don't add standard npm packages to Nix buildInputs here because
+		// they are often missing/broken in nixpkgs. Instead, we rely on 'npm install'
+		// in the shellHook (see generator/flake.go).
 	}
 
 	// Add detected system deps

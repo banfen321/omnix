@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -37,6 +38,11 @@ func (g *Generator) Generate(nixDir string) error {
 	flakePath := filepath.Join(nixDir, "flake.nix")
 	if err := os.WriteFile(flakePath, []byte(flakeContent), 0o644); err != nil {
 		return fmt.Errorf("write flake.nix: %w", err)
+	}
+
+	// If in a git repo, we MUST add the .nix dir to git for nix to see it
+	if _, err := os.Stat(filepath.Join(filepath.Dir(nixDir), ".git")); err == nil {
+		_ = exec.Command("git", "-C", filepath.Dir(nixDir), "add", ".nix").Run()
 	}
 
 	return nil
