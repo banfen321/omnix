@@ -182,7 +182,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	s.Suffix = " Validating flake..."
 	failedRepairs := make(map[string]bool) // track attrs that were already repaired once
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 100; i++ {
 		result := validator.Validate(nixDir)
 		if result.Success {
 			s.Stop()
