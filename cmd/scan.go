@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/banfen321/omnix/internal/config"
 	"github.com/banfen321/omnix/internal/generator"
 	"github.com/banfen321/omnix/internal/resolver"
 	"github.com/banfen321/omnix/internal/scanner"
 	"github.com/banfen321/omnix/internal/storage"
 	"github.com/banfen321/omnix/internal/validator"
+	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 )
 
@@ -206,12 +206,12 @@ func runScan(cmd *cobra.Command, args []string) error {
 			yellow.Println("  ⚠ 'direnv' is not installed in your system!")
 			dim.Println("    direnv is required for MAGIC auto-activation when you enter the folder.")
 			dim.Println("    To install it globally, run:")
-			bold.Println("      nix profile install nixpkgs#direnv nixpkgs#nix-direnv")
+			bold.Println("      nix --extra-experimental-features \"nix-command flakes\" profile install nixpkgs#direnv nixpkgs#nix-direnv")
 			dim.Println("    And add this to your ~/.zshrc or ~/.bashrc:")
 			bold.Println("      eval \"$(direnv hook $(basename $SHELL))\"")
 			fmt.Println()
 			green.Println("  ✓ But your Nix environment is built!")
-			bold.Println("  ▶ To enter it manually right now, run: nix develop ./.nix")
+			bold.Println("  ▶ To enter it manually right now, run: nix --extra-experimental-features \"nix-command flakes\" develop ./.nix")
 		} else {
 			yellow.Printf("  ⚠ Could not auto-run 'direnv allow': %s\n", err)
 		}

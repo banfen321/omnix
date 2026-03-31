@@ -7,7 +7,7 @@ import (
 )
 
 func Check(nixDir string) error {
-	cmd := exec.Command("nix", "flake", "check", nixDir, "--no-build")
+	cmd := exec.Command("nix", "--extra-experimental-features", "nix-command flakes", "flake", "check", nixDir, "--no-build")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		errMsg := strings.TrimSpace(string(output))
@@ -20,7 +20,7 @@ func Check(nixDir string) error {
 }
 
 func Eval(nixDir string) error {
-	cmd := exec.Command("nix", "eval", nixDir+"#devShells.x86_64-linux.default", "--json")
+	cmd := exec.Command("nix", "--extra-experimental-features", "nix-command flakes", "eval", nixDir+"#devShells.x86_64-linux.default", "--json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("eval error: %s", strings.TrimSpace(string(output)))

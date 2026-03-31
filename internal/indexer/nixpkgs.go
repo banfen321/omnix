@@ -25,7 +25,7 @@ type nixPkg struct {
 }
 
 func (idx *Indexer) IndexNixpkgs() (int, error) {
-	out, err := exec.Command("nix", "search", "nixpkgs", "^", "--json").Output()
+	out, err := exec.Command("nix", "--extra-experimental-features", "nix-command flakes", "search", "nixpkgs", "^", "--json").Output()
 	if err != nil {
 		return 0, fmt.Errorf("nix search: %w", err)
 	}
