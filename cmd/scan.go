@@ -199,7 +199,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 			var kept []resolver.NixPackage
 			found := false
 			for _, p := range nixPkgs {
-				if p.NixAttr == badAttr {
+				// Match if it's the exact attr, or if the bad attr is the specific leaf (e.g. 'llava' in 'python3Packages.llava')
+				if p.NixAttr == badAttr || strings.HasSuffix(p.NixAttr, "."+badAttr) {
 					found = true
 					continue
 				}

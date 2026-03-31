@@ -504,17 +504,40 @@ func dedup(deps []Dep) []Dep {
 	return result
 }
 func isLocalModule(dir, pkg string) bool {
-	// check if dir/pkg.py exists
-	if _, err := os.Stat(filepath.Join(dir, pkg+".py")); err == nil {
-		return true
+	// Normalize variations: modeling-finetune -> modeling_finetune
+	variations := []string{
+		pkg,
+		strings.ReplaceAll(pkg, "-", "_"),
+		strings.ReplaceAll(pkg, "_", "-"),
 	}
-	// check if dir/pkg/__init__.py exists
-	if _, err := os.Stat(filepath.Join(dir, pkg, "__init__.py")); err == nil {
-		return true
+
+	// Sub-directories to check (for monorepos like Transformers)
+	checkDirs := []string{
+		dir,
+		filepath.Join(dir, "src"),
+		filepath.Join(dir, "models"),
+		filepath.Join(dir, "transformers"), // Specific to transformers but safe for others
 	}
-	// check if dir/pkg is a directory
-	if info, err := os.Stat(filepath.Join(dir, pkg)); err == nil && info.IsDir() {
-		return true
+
+	for _, v := range variations {
+		for _, d := range checkDirs {
+			if _, err := os.Stat(d); err != nil {
+				continue
+			}
+
+			// check d/v.py (simple module)
+			if _, err := os.Stat(filepath.Join(d, v+".py")); err == nil {
+				return true
+			}
+			// check d/v/__init__.py (package)
+			if _, err := os.Stat(filepath.Join(d, v, "__init__.py")); err == nil {
+				return true
+			}
+			// check d/transformers/models/v (monorepo pattern)
+			if _, err := os.Stat(filepath.Join(d, "transformers", "models", v)); err == nil {
+				return true
+			}
+		}
 	}
 	return false
 }
