@@ -180,6 +180,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	s.Suffix = " Validating flake..."
+	failedRepairs := make(map[string]bool) // track attrs that were already repaired once
 
 	for i := 0; i < 10; i++ {
 		result := validator.Validate(nixDir)
@@ -193,6 +194,20 @@ func runScan(cmd *cobra.Command, args []string) error {
 		if len(result.MissingAttrs) > 0 {
 			s.Suffix = " Re-resolving broken packages..."
 			for _, badAttr := range result.MissingAttrs {
+				// If we already tried to repair this attr and it failed again → skip it
+				if failedRepairs[badAttr] {
+					var kept []resolver.NixPackage
+					for _, p := range nixPkgs {
+						if p.NixAttr == badAttr || strings.HasSuffix(p.NixAttr, "."+badAttr) {
+							continue
+						}
+						kept = append(kept, p)
+					}
+					nixPkgs = kept
+					yellow.Printf("  ⚠ Skipped '%s' (repair failed, will use language PM)\n", badAttr)
+					continue
+				}
+
 				// Find the ecosystem of this broken package
 				ecosystem := "unknown"
 				for _, p := range nixPkgs {
@@ -218,13 +233,19 @@ func runScan(cmd *cobra.Command, args []string) error {
 					nixPkgs = kept
 					yellow.Printf("  ⚠ Skipped '%s' (will be installed via language package manager)\n", badAttr)
 				} else {
-					// REPAIR: swap in the corrected attribute
+					// REPAIR: swap in the corrected attribute and mark as attempted
 					for j, p := range nixPkgs {
 						if p.NixAttr == badAttr || strings.HasSuffix(p.NixAttr, "."+badAttr) {
 							nixPkgs[j].NixAttr = repair
 							green.Printf("  ✓ Repaired '%s' → '%s'\n", badAttr, repair)
 							break
 						}
+					}
+					// Track the NEW attr so if it fails too, we skip next time
+					failedRepairs[repair] = true
+					// Also track the leaf name — nix reports just the leaf (e.g. 'clearml' not 'python3Packages.clearml')
+					if idx := strings.LastIndex(repair, "."); idx >= 0 {
+						failedRepairs[repair[idx+1:]] = true
 					}
 				}
 			}
