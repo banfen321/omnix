@@ -107,18 +107,24 @@ func (g *Generator) buildShellHook() string {
 		case "python":
 			hooks = append(hooks,
 				`export PYTHONDONTWRITEBYTECODE=1`,
-				`if [ ! -d ".venv" ]; then python3 -m venv .venv; fi`,
-				`source .venv/bin/activate`,
-				`if [ -f "requirements.txt" ]; then pip install -r requirements.txt --quiet 2>/dev/null; fi`,
-				`if [ -f "pyproject.toml" ]; then pip install -e ".[dev]" --quiet 2>/dev/null || pip install -e . --quiet 2>/dev/null; fi`,
-				`if [ -f "setup.py" ] && [ ! -f "pyproject.toml" ]; then pip install -e . --quiet 2>/dev/null; fi`,
+				`if [ ! -d ".venv" ]; then`,
+				`  python3 -m venv .venv`,
+				`  source .venv/bin/activate`,
+				`  if [ -f "requirements.txt" ]; then pip install -r requirements.txt --quiet 2>/dev/null; fi`,
+				`  if [ -f "pyproject.toml" ]; then pip install -e ".[dev]" --quiet 2>/dev/null || pip install -e . --quiet 2>/dev/null; fi`,
+				`  if [ -f "setup.py" ] && [ ! -f "pyproject.toml" ]; then pip install -e . --quiet 2>/dev/null; fi`,
+				`else`,
+				`  source .venv/bin/activate`,
+				`fi`,
 			)
 		case "node":
 			hooks = append(hooks,
 				`export NODE_ENV=development`,
-				`if [ -f "package-lock.json" ]; then npm ci --silent 2>/dev/null; fi`,
-				`if [ -f "yarn.lock" ]; then yarn install --frozen-lockfile --silent 2>/dev/null; fi`,
-				`if [ -f "pnpm-lock.yaml" ]; then pnpm install --frozen-lockfile --silent 2>/dev/null; fi`,
+				`if [ ! -d "node_modules" ]; then`,
+				`  if [ -f "package-lock.json" ]; then npm ci --silent 2>/dev/null; fi`,
+				`  if [ -f "yarn.lock" ]; then yarn install --frozen-lockfile --silent 2>/dev/null; fi`,
+				`  if [ -f "pnpm-lock.yaml" ]; then pnpm install --frozen-lockfile --silent 2>/dev/null; fi`,
+				`fi`,
 			)
 		case "go":
 			hooks = append(hooks,
