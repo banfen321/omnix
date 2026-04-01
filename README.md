@@ -94,6 +94,7 @@ CLI → Scanner (Manifests/AST) → Resolver (Static Map → Version DB → SQLi
 
 Everything stays on your machine. The LLM is only pinged if a package name is completely unknown, ensuring maximum speed and privacy.
 
+---
 ### Original at [https://cd-linux.club](https://cd-linux.club/)/
 
 ## 📝 License
